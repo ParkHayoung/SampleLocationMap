@@ -35,6 +35,7 @@ public class MainActivity extends AppCompatActivity {
     private LocationManager locationManager;
     private GoogleMap map;
     private Marker marker;
+    private LocationListener locationListener = new GpsLocationListener(this);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -69,11 +70,12 @@ public class MainActivity extends AppCompatActivity {
     private boolean checkLocationPermission() {
         boolean permissionGranted = true;
 
-        for (int i = 0; i < PERMISSIONS.length; i++) {
-            int permissionGrantState = ContextCompat.checkSelfPermission(this, PERMISSIONS[i]);
-            if (permissionGrantState == PackageManager.PERMISSION_DENIED)
+        for (String permission : PERMISSIONS) {
+            int permissionGrantState = ContextCompat.checkSelfPermission(this, permission);
+            if (permissionGrantState == PackageManager.PERMISSION_DENIED) {
                 permissionGranted = false;
                 break;
+            }
         }
 
         if (!permissionGranted) {
@@ -106,34 +108,10 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private LocationListener locationListener = new LocationListener() {
-        /**
-         * GPS 를 이용해 사용자의 위치를 얻어올때 호출 되는 메서드
-         */
-        @Override
-        public void onLocationChanged(Location location) {
-            // 사용자의 좌표를 얻어왔으면 지도를 해당 위치로 움직여주자!
-            showCurrentLocation(location);
-        }
-
-        @Override
-        public void onStatusChanged(String provider, int status, Bundle extras) {
-
-        }
-
-        @Override
-        public void onProviderEnabled(String provider) {
-
-        }
-
-        @Override
-        public void onProviderDisabled(String provider) {
-
-        }
-    };
-
     private void requestMyLocation() {
-        checkLocationPermission();
+        if (!checkLocationPermission()) {
+            return ;
+        }
 
         try {
             // 먼저 사용자의 기기에 등록된 마지막 GPS 위치를 획득해서 빠르게 지도를 이동시켜주자!
@@ -144,11 +122,13 @@ public class MainActivity extends AppCompatActivity {
 
             // 다음으로는 실제로 GPS 에게 일을 시켜서 현재 기기의 좌표값을 얻어오자!
 
-            long minTime = 10000; // 위치를 요청하는 시간 간격(milliseconds), == 10초
-            float minDistance = 0; // 허용 오차범위(meter). 힌트로만 사용될 뿐 실제로 설정된 오차범위 내의 값을 리턴한다는 보장은 없다.
+            long minTime = 5000; // 위치를 요청하는 시간 간격(milliseconds), == 5초
+            float minDistance = 20; // 허용 오차범위(meter). 힌트로만 사용될 뿐 실제로 설정된 오차범위 내의 값을 리턴한다는 보장은 없다.
 
             // 요청!
+            locationManager.removeUpdates(locationListener);
             locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, minTime, minDistance, locationListener);
+            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, minTime, minDistance, locationListener);
 
 
         } catch (Exception e) {
@@ -166,7 +146,7 @@ public class MainActivity extends AppCompatActivity {
         locationManager.removeUpdates(locationListener);
     }
 
-    private void showCurrentLocation(Location location) {
+    public void showCurrentLocation(Location location) {
         LatLng curPoint = new LatLng(location.getLatitude(), location.getLongitude());
         map.animateCamera(CameraUpdateFactory.newLatLngZoom(curPoint, 15));
 
